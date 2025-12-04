@@ -8,3 +8,4 @@ you can easily install it using pip:
 pip install pytorch-kinematics
 ```
 
+![alt](ik.gif)
