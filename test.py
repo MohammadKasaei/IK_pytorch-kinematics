@@ -35,33 +35,35 @@ def main():
 
     # goal equal to current configuration
     lim = torch.tensor(chain.get_joint_limits(), device=device)
-    
+
     for i in range(100):
         # get the current joint states from pybullet
-        joint_states = p.getJointStates(robot_id, range(num_joints))
-        cur_q = torch.tensor([js[0] for js in joint_states], device=device)
-        M = 1
         rot = pk.transform3d.euler_angles_to_matrix(torch.tensor([0.0, torch.pi/2, 0.0], device=device), convention="XYZ")
         goal_in_rob_frame_tf = pk.Transform3d(default_batch_size=1,
                                             rot = rot,
                                             pos = torch.tensor([0.5+0.1*np.cos(2*torch.pi*i/100), 0.0, 0.5+0.1*np.sin(2*torch.pi*i/100)], dtype=torch.float32, device=device),
                                             device=device)
 
+        joint_states = p.getJointStates(robot_id, list(range(num_joints)))
+        cur_q = torch.tensor([js[0] for js in joint_states], device=device)
         
         ik = pk.PseudoInverseIK(chain, max_iterations=30, num_retries=10,
-                                joint_limits=lim.T,
-                                early_stopping_any_converged=True,
-                                early_stopping_no_improvement="all",
-                                retry_configs=cur_q.reshape(1, -1),
-                                # line_search=pk.BacktrackingLineSearch(max_lr=0.2),
-                                debug=False,
-                                lr=0.2)
+                                    joint_limits=lim.T,
+                                    early_stopping_any_converged=True,
+                                    early_stopping_no_improvement="all",
+                                    retry_configs=cur_q.reshape(1, -1),
+                                    # line_search=pk.BacktrackingLineSearch(max_lr=0.2),
+                                    debug=False,
+                                    lr=0.2)
+        
+        
+        
 
         # do IK
         sol = ik.solve(goal_in_rob_frame_tf)
         joints = sol.solutions[0].squeeze(0).cpu().numpy().tolist()
-
-        # Apply joint positions in PyBullet
+      
+        # # Apply joint positions in PyBullet
         for i, joint_angle in enumerate(joints):
             try:
                 p.resetJointState(robot_id, i, joint_angle)
